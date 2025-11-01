@@ -1,0 +1,5 @@
+# requirements.txt
+PySide6
+pyserial
+numpy
+pyrealsense2
