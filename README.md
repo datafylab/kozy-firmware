@@ -1,6 +1,6 @@
 <div align="center">
   <img src="thumbnails/small-kozy-firmware-logo.png" alt="Logo" width="100" height="100"/>
-  <h3 align="center">BlenderKit</h3>
+  <h3 align="center">Kozy-Firmware</h3>
 
   Control firmware and software for Kozy-xx
   
@@ -29,17 +29,17 @@ Of course, first of all, this is created for personal projects.
 - **Display**: Any screen to access the `Kozy-Control-Panel` GUI
 
 ## Quick Start!
-1. Сlone the repository::
+- Сlone the repository::
    ```bash
    git clone https://github.com/datafylab/kozy-firmware.git
    cd kozy-firmware
    pip install -r requirements.txt
 
-2. Launch it!
+- Launch it!
    ```bash
    python main.py
 
-   Or build it!
+- Or build it!
    ```bash
    pyinstaller --onefile main.py
 
