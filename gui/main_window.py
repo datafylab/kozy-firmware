@@ -26,7 +26,7 @@ if REAL_SENSE_AVAILABLE:
 class RobotGUI(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Kozy-01 Control Panel")
+        self.setWindowTitle("Kozy Control Panel")
         self.resize(1500, 900)
         self.setStyleSheet(get_raw_cyber_stylesheet())
 

@@ -5,14 +5,14 @@ from PySide6.QtCore import Qt
 class AboutDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("About Kozy-01 Control Panel")
+        self.setWindowTitle("About Kozy Control Panel")
         self.setFixedSize(500, 300)
         if parent:
             self.setStyleSheet(parent.styleSheet())
 
         layout = QVBoxLayout(self)
 
-        logo_label = QLabel("Kozy-01 Control Panel")
+        logo_label = QLabel("Kozy Control Panel")
         logo_label.setAlignment(Qt.AlignCenter)
         logo_label.setStyleSheet("font-size: 32px; font-weight: bold; color: #b8a0ff; margin: 20px;")
         layout.addWidget(logo_label)
