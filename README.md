@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="thumbnails/kozy-firmware-logo.png" alt="Logo" width="100" height="100"/>
+  <img src="thumbnails/small-kozy-firmware-logo.png" alt="Logo" width="100" height="100"/>
   <h3 align="center">BlenderKit</h3>
 
   Control firmware and software for Kozy-xx
@@ -43,4 +43,5 @@ Of course, first of all, this is created for personal projects.
    ```bash
    pyinstaller --onefile main.py
 
+## More...
 [![Telegram](https://img.shields.io/badge/Telegram-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white)](https://t.me/datafylab)
