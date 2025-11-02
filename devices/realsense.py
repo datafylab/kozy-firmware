@@ -27,7 +27,7 @@ def detect_realsense():
         logging.error(f"RealSense detection error: {e}")
         return False, "Detection error"
 
-def normalize_depth_for_display(depth_array, max_distance_mm=4000):
+def normalize_depth_for_display(depth_array, max_distance_mm=3000):
     depth_clipped = np.clip(depth_array, 0, max_distance_mm)
     depth_normalized = (depth_clipped.astype(np.float32) / max_distance_mm) * 255.0
     return depth_normalized.astype(np.uint8)

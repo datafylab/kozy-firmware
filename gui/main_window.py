@@ -96,7 +96,7 @@ class RobotGUI(QMainWindow):
         layout.setSpacing(12)
         layout.setAlignment(Qt.AlignTop)
 
-        title = QLabel("DEVICE CONTROL")
+        title = QLabel("MODULE CONTROL")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-weight: bold; color: #b8a0ff; margin-bottom: 8px;")
         layout.addWidget(title)
