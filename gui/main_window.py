@@ -5,16 +5,17 @@ import os
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QTabWidget, QLabel, QTextEdit, QPushButton, QSplitter, QFrame,
-    QPlainTextEdit, QSizePolicy, QGroupBox, QComboBox, QMenuBar, QMenu
+    QPlainTextEdit, QSizePolicy, QGroupBox, QComboBox, QMenuBar, QMenu,
+    QToolButton, QMenu, QAction, QScrollArea, QStyle
 )
-from PySide6.QtGui import QAction
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QAction, QIcon, QPalette, QColor
+from PySide6.QtCore import Qt, QTimer, QSize
 from PySide6.QtGui import QImage, QPixmap, QIcon
 
 # Импорты наших модулей
-from gui.styles import get_raw_cyber_stylesheet
+from gui.styles import get_raw_cyber_stylesheet, get_dark_stylesheet, get_light_stylesheet
 from gui.panels import DevicePanel
-from gui.dialogs import AboutDialog
+from gui.dialogs import AboutDialog, SettingsDialog
 from utils.logger import setup_logger
 from config import load_config, save_config
 from devices.realsense import REAL_SENSE_AVAILABLE, rs, detect_realsense, normalize_depth_for_display
@@ -26,6 +27,9 @@ if REAL_SENSE_AVAILABLE:
 class RobotGUI(QMainWindow):
     def __init__(self):
         super().__init__()
+        self.modules = {}  # Dictionary to store active modules
+        self.module_widgets = {}  # Dictionary to store module widgets
+        self.current_theme = "raw_cyber"  # Default theme
         self.initialize_window()
         self.create_widgets()
         self.setup_layout()
@@ -36,13 +40,29 @@ class RobotGUI(QMainWindow):
         """Initialize the main window properties."""
         self.setWindowTitle("Kozy Control Panel")
         self.resize(1500, 900)
-        self.setStyleSheet(get_raw_cyber_stylesheet())
+        self.setStyleSheet(self.get_current_stylesheet())
         self.config = load_config()
         self.setup_menu()
         
         # Initialize RealSense variables
         self.pipeline = None
         self.timer = None
+    
+    def get_current_stylesheet(self):
+        """Get the current theme stylesheet."""
+        if self.current_theme == "raw_cyber":
+            return get_raw_cyber_stylesheet()
+        elif self.current_theme == "dark":
+            return get_dark_stylesheet()
+        elif self.current_theme == "light":
+            return get_light_stylesheet()
+        else:
+            return get_raw_cyber_stylesheet()
+    
+    def change_theme(self, theme_name):
+        """Change the application theme."""
+        self.current_theme = theme_name
+        self.setStyleSheet(self.get_current_stylesheet())
     
     def create_widgets(self):
         """Create all the main widgets for the interface."""
@@ -105,69 +125,335 @@ class RobotGUI(QMainWindow):
         file_menu.addAction("Exit", self.close)
 
         program_menu = menu_bar.addMenu("Program")
-        program_menu.addAction("Settings", self.open_about)
+        program_menu.addAction("Settings", self.open_settings)
+        
+        # Theme submenu
+        theme_menu = program_menu.addMenu("Theme")
+        raw_cyber_action = theme_menu.addAction("Raw Cyber")
+        raw_cyber_action.triggered.connect(lambda: self.change_theme("raw_cyber"))
+        
+        dark_action = theme_menu.addAction("Dark")
+        dark_action.triggered.connect(lambda: self.change_theme("dark"))
+        
+        light_action = theme_menu.addAction("Light")
+        light_action.triggered.connect(lambda: self.change_theme("light"))
 
-    def open_about(self):
-        """Open the about dialog."""
-        about_dialog = AboutDialog(self)
-        about_dialog.exec()
+    def open_settings(self):
+        """Open the settings dialog."""
+        from gui.dialogs import SettingsDialog
+        settings_dialog = SettingsDialog(self)
+        settings_dialog.exec()
 
     def create_control_panel(self):
-        """Create the control panel with device controls."""
+        """Create the control panel with module management."""
         panel = QFrame()
         layout = QVBoxLayout(panel)
-        layout.setSpacing(12)
-        layout.setAlignment(Qt.AlignTop)
+        layout.setAlignment(Qt.AlignCenter)  # Center the content
 
         # Add title
-        title = QLabel("MODULE CONTROL")
+        title = QLabel("MODULES")
         title.setAlignment(Qt.AlignCenter)
         title.setStyleSheet("font-weight: bold; color: #b8a0ff; margin-bottom: 8px;")
         layout.addWidget(title)
 
-        # Create device panels
-        self.create_realsense_panel(layout)
-        self.create_servo_panel(layout)
-        self.create_pico_panel(layout)
+        # Create a scroll area for modules
+        self.modules_scroll = QScrollArea()
+        self.modules_scroll.setWidgetResizable(True)
+        self.modules_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.modules_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        
+        # Create a container widget for the modules
+        self.modules_container = QWidget()
+        self.modules_layout = QVBoxLayout(self.modules_container)
+        self.modules_layout.setAlignment(Qt.AlignTop)
+        
+        # Initially empty - will be populated by add_module
+        self.modules_scroll.setWidget(self.modules_container)
+        
+        # Add the scroll area to the main layout
+        layout.addWidget(self.modules_scroll)
 
-        layout.addStretch()
+        # Create the circular add button
+        self.add_module_button = QToolButton()
+        self.add_module_button.setText("+")
+        self.add_module_button.setFixedSize(50, 50)
+        self.add_module_button.setStyleSheet("""
+            QToolButton {
+                background-color: #2a2b40;
+                color: white;
+                border-radius: 25px;
+                font-size: 24px;
+                font-weight: bold;
+                border: 2px solid #5a5080;
+            }
+            QToolButton:hover {
+                background-color: #3a3b50;
+                border: 2px solid #7a70a0;
+            }
+            QToolButton:pressed {
+                background-color: #4a4b60;
+            }
+        """)
+        self.add_module_button.clicked.connect(self.show_add_module_menu)
+        
+        layout.addWidget(self.add_module_button)
+        layout.setAlignment(self.add_module_button, Qt.AlignCenter)
+
         return panel
 
-    def create_realsense_panel(self, parent_layout):
-        """Create the RealSense camera control panel."""
-        self.realsense_panel = DevicePanel("RealSense D415")
+    def show_add_module_menu(self):
+        """Show a menu to add new modules."""
+        menu = QMenu(self)
+        
+        # Add sample module options
+        real_sense_action = menu.addAction("RealSense Camera")
+        real_sense_action.triggered.connect(lambda: self.add_module("RealSense Camera"))
+        
+        servo_action = menu.addAction("Servo Drives")
+        servo_action.triggered.connect(lambda: self.add_module("Servo Drives"))
+        
+        pico_action = menu.addAction("RPi Pico")
+        pico_action.triggered.connect(lambda: self.add_module("RPi Pico"))
+        
+        # Show the menu at the position of the add button
+        pos = self.add_module_button.mapToGlobal(self.add_module_button.rect().bottomLeft())
+        menu.exec(pos)
+    
+    def add_module(self, module_name):
+        """Add a new module to the control panel."""
+        # Create a new module panel
+        module_panel = DevicePanel(module_name)
+        
+        # Create buttons for module control
+        module_buttons_layout = QHBoxLayout()
+        
+        # Disable/enable button
+        toggle_button = QPushButton("Disable")
+        toggle_button.setStyleSheet("""
+            QPushButton {
+                background: #1a1b2a;
+                color: #c0b0ff;
+                border: 1px solid #3a3550;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 9px;
+            }
+            QPushButton:hover { 
+                background: #222335; 
+                border-color: #5a5080; 
+            }
+        """)
+        toggle_button.clicked.connect(lambda: self.toggle_module(module_name))
+        
+        # Remove button
+        remove_button = QPushButton("Remove")
+        remove_button.setStyleSheet("""
+            QPushButton {
+                background: #1a1b2a;
+                color: #ff6b6b;
+                border: 1px solid #3a3550;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-size: 9px;
+            }
+            QPushButton:hover { 
+                background: #222335; 
+                border-color: #ff6b6b; 
+            }
+        """)
+        remove_button.clicked.connect(lambda: self.remove_module(module_name))
+        
+        module_buttons_layout.addWidget(toggle_button)
+        module_buttons_layout.addWidget(remove_button)
+        module_buttons_layout.addStretch()
+        
+        # Create the module layout
+        module_layout = QVBoxLayout()
+        module_layout.addWidget(module_panel)
+        module_layout.addLayout(module_buttons_layout)
+        
+        # Add to the modules container
+        module_widget = QWidget()
+        module_widget.setLayout(module_layout)
+        self.modules_layout.addWidget(module_widget)
+        
+        # Store references
+        self.modules[module_name] = {
+            'panel': module_panel,
+            'enabled': True,
+            'toggle_button': toggle_button,
+            'remove_button': remove_button
+        }
+        self.module_widgets[module_name] = module_widget
+        
+        # Initialize the module based on its type
+        self.initialize_module(module_name)
+    
+    def initialize_module(self, module_name):
+        """Initialize specific module functionality."""
+        if module_name == "RealSense Camera":
+            self.initialize_realsense_module(module_name)
+        elif module_name == "Servo Drives":
+            self.initialize_servo_module(module_name)
+        elif module_name == "RPi Pico":
+            self.initialize_pico_module(module_name)
+    
+    def initialize_realsense_module(self, module_name):
+        """Initialize RealSense camera module."""
+        module_info = self.modules[module_name]
+        panel = module_info['panel']
+        
+        # Add RealSense-specific controls
         realsense_layout = QVBoxLayout()
-        self.realsense_status = self.realsense_panel.status_label
-        realsense_layout.addWidget(self.realsense_status)
-
+        status_label = panel.status_label
+        realsense_layout.addWidget(status_label)
+        
         # Resolution selection
         resolution_layout = self.create_resolution_control()
         realsense_layout.addLayout(resolution_layout)
-
+        
         # FPS selection
         fps_layout = self.create_fps_control()
         realsense_layout.addLayout(fps_layout)
-
-        # Load saved configuration
-        saved_res = self.config.get("resolution", "1280x720")
-        saved_fps = str(self.config.get("fps", 30))
-        self.resolution_combo.setCurrentText(saved_res)
-        self.fps_combo.setCurrentText(saved_fps)
-
+        
         # Stream control buttons
         start_button = QPushButton("Start Stream")
         stop_button = QPushButton("Stop Stream")
         stop_button.setEnabled(False)
         start_button.clicked.connect(self.start_realsense)
         stop_button.clicked.connect(self.stop_realsense)
-
+        
         self.btn_rs_start = start_button
         self.btn_rs_stop = stop_button
-
+        
         realsense_layout.addWidget(start_button)
         realsense_layout.addWidget(stop_button)
-        self.realsense_panel.setLayout(realsense_layout)
-        parent_layout.addWidget(self.realsense_panel)
+        panel.setLayout(realsense_layout)
+        
+        # Detect RealSense
+        if REAL_SENSE_AVAILABLE:
+            realsense_success, realsense_message = detect_realsense()
+            realsense_color = "#6bff9b" if realsense_success else ("#ff6b6b" if "missing" in realsense_message else "#ffaa6b")
+            panel.set_status(realsense_message, realsense_color)
+        else:
+            panel.set_status("Not available", "#ff6b6b")
+    
+    def initialize_servo_module(self, module_name):
+        """Initialize servo drives module."""
+        module_info = self.modules[module_name]
+        panel = module_info['panel']
+        
+        servo_layout = QVBoxLayout()
+        servo_layout.addWidget(panel.status_label)
+        init_button = QPushButton("Initialize")
+        init_button.clicked.connect(lambda: self.servo_initialize(module_name))
+        servo_layout.addWidget(init_button)
+        panel.setLayout(servo_layout)
+        
+        panel.set_status("Unknown", "#ffaa6b")
+    
+    def initialize_pico_module(self, module_name):
+        """Initialize RPi Pico module."""
+        module_info = self.modules[module_name]
+        panel = module_info['panel']
+        
+        pico_layout = QVBoxLayout()
+        self.pico_status = panel.status_label
+        pico_layout.addWidget(self.pico_status)
+        
+        connect_button = QPushButton("Connect")
+        connect_button.clicked.connect(self.connect_pico)
+        pico_layout.addWidget(connect_button)
+        
+        self.btn_pico_connect = connect_button
+        panel.setLayout(pico_layout)
+        
+        panel.set_status("Disconnected", "#ffaa6b")
+    
+    def servo_initialize(self, module_name):
+        """Placeholder for servo initialization."""
+        self.modules[module_name]['panel'].set_status("Initialized", "#6bff9b")
+        logging.info(f"Servo module {module_name} initialized")
+    
+    def toggle_module(self, module_name):
+        """Toggle module enabled/disabled state."""
+        module_info = self.modules[module_name]
+        if module_info['enabled']:
+            # Disable the module
+            module_info['toggle_button'].setText("Enable")
+            module_info['panel'].setStyleSheet("""
+                QGroupBox {
+                    font-weight: bold;
+                    color: #555555;
+                    border: 1px solid #2a2740;
+                    border-radius: 4px;
+                    margin-top: 12px;
+                    padding-top: 8px;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 8px;
+                    padding: 0 4px;
+                }
+            """)
+            module_info['panel'].set_status("Disabled", "#555555")
+            module_info['enabled'] = False
+            
+            # Disable any controls in the module
+            for i in range(module_info['panel'].layout().count()):
+                widget = module_info['panel'].layout().itemAt(i).widget()
+                if widget and hasattr(widget, 'setEnabled'):
+                    widget.setEnabled(False)
+        else:
+            # Enable the module
+            module_info['toggle_button'].setText("Disable")
+            module_info['panel'].setStyleSheet("""
+                QGroupBox {
+                    font-weight: bold;
+                    color: #b8a0ff;
+                    border: 1px solid #2a2740;
+                    border-radius: 4px;
+                    margin-top: 12px;
+                    padding-top: 8px;
+                }
+                QGroupBox::title {
+                    subcontrol-origin: margin;
+                    left: 8px;
+                    padding: 0 4px;
+                }
+            """)
+            if module_name == "RealSense Camera":
+                if REAL_SENSE_AVAILABLE:
+                    realsense_success, realsense_message = detect_realsense()
+                    realsense_color = "#6bff9b" if realsense_success else ("#ff6b6b" if "missing" in realsense_message else "#ffaa6b")
+                    module_info['panel'].set_status(realsense_message, realsense_color)
+                else:
+                    module_info['panel'].set_status("Not available", "#ff6b6b")
+            elif module_name == "Servo Drives":
+                module_info['panel'].set_status("Unknown", "#ffaa6b")
+            elif module_name == "RPi Pico":
+                module_info['panel'].set_status("Disconnected", "#ffaa6b")
+            
+            module_info['enabled'] = True
+            
+            # Enable any controls in the module
+            for i in range(module_info['panel'].layout().count()):
+                widget = module_info['panel'].layout().itemAt(i).widget()
+                if widget and hasattr(widget, 'setEnabled'):
+                    widget.setEnabled(True)
+    
+    def remove_module(self, module_name):
+        """Remove a module from the control panel."""
+        # Remove from layout
+        module_widget = self.module_widgets[module_name]
+        self.modules_layout.removeWidget(module_widget)
+        module_widget.deleteLater()
+        
+        # Remove from dictionaries
+        del self.modules[module_name]
+        del self.module_widgets[module_name]
+        
+        logging.info(f"Module {module_name} removed")
 
     def create_resolution_control(self):
         """Create resolution selection controls."""
@@ -187,38 +473,22 @@ class RobotGUI(QMainWindow):
         fps_layout.addWidget(self.fps_combo)
         return fps_layout
 
-    def create_servo_panel(self, parent_layout):
-        """Create the servo drives control panel."""
-        self.servo_panel = DevicePanel("Servo Drives")
-        servo_layout = QVBoxLayout()
-        servo_layout.addWidget(self.servo_panel.status_label)
-        servo_layout.addWidget(QPushButton("Initialize"))
-        self.servo_panel.setLayout(servo_layout)
-        parent_layout.addWidget(self.servo_panel)
-
-    def create_pico_panel(self, parent_layout):
-        """Create the Raspberry Pi Pico control panel."""
-        self.pico_panel = DevicePanel("RPi Pico")
-        pico_layout = QVBoxLayout()
-        self.pico_status = self.pico_panel.status_label
-        pico_layout.addWidget(self.pico_status)
-
-        connect_button = QPushButton("Connect")
-        connect_button.clicked.connect(self.connect_pico)
-        pico_layout.addWidget(connect_button)
-
-        self.btn_pico_connect = connect_button
-        self.pico_panel.setLayout(pico_layout)
-        parent_layout.addWidget(self.pico_panel)
-
     def detect_devices(self):
-        """Detect connected devices and update their status."""
-        realsense_success, realsense_message = detect_realsense()
-        realsense_color = "#6bff9b" if realsense_success else ("#ff6b6b" if "missing" in realsense_message else "#ffaa6b")
-        self.realsense_panel.set_status(realsense_message, realsense_color)
+        """Detect connected devices and update their status if RealSense module exists."""
+        if "RealSense Camera" in self.modules:
+            if REAL_SENSE_AVAILABLE:
+                realsense_success, realsense_message = detect_realsense()
+                realsense_color = "#6bff9b" if realsense_success else ("#ff6b6b" if "missing" in realsense_message else "#ffaa6b")
+                self.modules["RealSense Camera"]['panel'].set_status(realsense_message, realsense_color)
+            else:
+                self.modules["RealSense Camera"]['panel'].set_status("Not available", "#ff6b6b")
 
-        self.servo_panel.set_status("Unknown", "#ffaa6b")
-        self.pico_panel.set_status("Disconnected", "#ffaa6b")
+        # Update servo and pico statuses if modules exist
+        if "Servo Drives" in self.modules:
+            self.modules["Servo Drives"]['panel'].set_status("Unknown", "#ffaa6b")
+        
+        if "RPi Pico" in self.modules:
+            self.modules["RPi Pico"]['panel'].set_status("Disconnected", "#ffaa6b")
 
     def create_tabs(self):
         """Create the tabbed interface with camera, charts, and AI tabs."""
