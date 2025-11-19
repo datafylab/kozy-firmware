@@ -12,20 +12,20 @@ class AboutDialog(QDialog):
 
         layout = QVBoxLayout(self)
 
-        logo_label = QLabel("Kozy Control Panel")
-        logo_label.setAlignment(Qt.AlignCenter)
-        logo_label.setStyleSheet("font-size: 32px; font-weight: bold; color: #b8a0ff; margin: 20px;")
-        layout.addWidget(logo_label)
+        title_label = QLabel("Kozy Control Panel")
+        title_label.setAlignment(Qt.AlignCenter)
+        title_label.setStyleSheet("font-size: 32px; font-weight: bold; color: #b8a0ff; margin: 20px;")
+        layout.addWidget(title_label)
 
-        desc = QLabel("Silly program IDK :P")
-        desc.setAlignment(Qt.AlignCenter)
-        desc.setStyleSheet("color: #c5c8d6; margin: 10px;")
-        layout.addWidget(desc)
+        description_label = QLabel("Silly program IDK :P")
+        description_label.setAlignment(Qt.AlignCenter)
+        description_label.setStyleSheet("color: #c5c8d6; margin: 10px;")
+        layout.addWidget(description_label)
 
-        footer = QLabel("Made by Datafy Lab")
-        footer.setAlignment(Qt.AlignRight | Qt.AlignBottom)
-        footer.setStyleSheet("color: #5a5080; font-size: 10px; margin: 10px;")
-        layout.addWidget(footer)
+        footer_label = QLabel("Made by Datafy Lab")
+        footer_label.setAlignment(Qt.AlignRight | Qt.AlignBottom)
+        footer_label.setStyleSheet("color: #5a5080; font-size: 10px; margin: 10px;")
+        layout.addWidget(footer_label)
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok)
         button_box.accepted.connect(self.accept)

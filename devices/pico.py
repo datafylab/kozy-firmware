@@ -5,8 +5,8 @@ import time
 import logging
 
 def find_pico_port():
-    """Ищет порт, к которому подключена Pico (по VID/PID или имени)"""
-    # VID/PID для Raspberry Pi Pico в режиме MicroPython
+    """Find the port to which the Pico is connected (by VID/PID or name)."""
+    # VID/PID for Raspberry Pi Pico in MicroPython mode
     PICO_VID = 0x2E8A  # Raspberry Pi
     PICO_PID = 0x0005  # MicroPython CDC
 
@@ -17,28 +17,28 @@ def find_pico_port():
     return None
 
 def connect_to_pico(timeout=3):
-    """Подключается к Pico и запрашивает код по команде"""
-    port = find_pico_port()
-    if not port:
+    """Connect to the Pico and request its identification code."""
+    pico_port = find_pico_port()
+    if not pico_port:
         logging.warning("Pico not found")
         return None
 
     try:
-        with serial.Serial(port, baudrate=115200, timeout=1) as ser:
-            logging.info(f"Connected to Pico on {port}")
-            # Отправляем команду
-            ser.write(b"GET_CODE\n")
-            ser.flush()
+        with serial.Serial(pico_port, baudrate=115200, timeout=1) as serial_connection:
+            logging.info(f"Connected to Pico on {pico_port}")
+            # Send command
+            serial_connection.write(b"GET_CODE\n")
+            serial_connection.flush()
 
-            # Ждём ответ до таймаута
-            start = time.time()
-            while time.time() - start < timeout:
-                line = ser.readline().decode('utf-8', errors='ignore').strip()
+            # Wait for response up to timeout
+            start_time = time.time()
+            while time.time() - start_time < timeout:
+                line = serial_connection.readline().decode('utf-8', errors='ignore').strip()
                 if line.startswith("CODE:"):
                     code = line[5:]
                     logging.info(f"Received code from Pico: {code}")
                     return code
-                elif line:  # Логируем только непустые "мусорные" строки
+                elif line:  # Log only non-empty "garbage" strings
                     logging.warning(f"Unexpected data from Pico: {line}")
 
             logging.warning("Pico did not respond with CODE in time")
