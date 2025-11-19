@@ -8,8 +8,8 @@ class QLogHandler(logging.Handler):
         self.text_edit = text_edit
 
     def emit(self, record):
-        msg = self.format(record)
-        self.text_edit.appendPlainText(msg)
+        message = self.format(record)
+        self.text_edit.appendPlainText(message)
 
 def setup_logger(text_edit: QPlainTextEdit):
     handler = QLogHandler(text_edit)
