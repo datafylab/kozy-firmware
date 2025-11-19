@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QMainWindow, QWidget, QHBoxLayout, QVBoxLayout,
     QTabWidget, QLabel, QTextEdit, QPushButton, QSplitter, QFrame,
     QPlainTextEdit, QSizePolicy, QGroupBox, QComboBox, QMenuBar, QMenu,
-    QToolButton, QMenu, QAction, QScrollArea, QStyle
+    QToolButton, QMenu, QScrollArea, QStyle
 )
 from PySide6.QtGui import QAction, QIcon, QPalette, QColor
 from PySide6.QtCore import Qt, QTimer, QSize
