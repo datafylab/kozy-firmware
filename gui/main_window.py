@@ -330,6 +330,9 @@ class RobotGUI(QMainWindow):
         realsense_layout.addWidget(stop_button)
         panel.setLayout(realsense_layout)
         
+        # Store reference to realsense panel for use in start/stop functions
+        self.realsense_panel = panel
+        
         # Detect RealSense
         if REAL_SENSE_AVAILABLE:
             realsense_success, realsense_message = detect_realsense()
@@ -444,6 +447,15 @@ class RobotGUI(QMainWindow):
     
     def remove_module(self, module_name):
         """Remove a module from the control panel."""
+        # If removing RealSense module, stop the stream first
+        if module_name == "RealSense Camera":
+            self.stop_realsense()
+            # Clear the camera displays
+            self.video_label_rgb.clear()
+            self.video_label_rgb.setText("RGB Stream")
+            self.video_label_depth.clear()
+            self.video_label_depth.setText("Depth Stream")
+        
         # Remove from layout
         module_widget = self.module_widgets[module_name]
         self.modules_layout.removeWidget(module_widget)
@@ -575,13 +587,21 @@ class RobotGUI(QMainWindow):
             self.timer.timeout.connect(self.update_frame)
             self.timer.start(int(1000 / fps))
 
-            self.realsense_panel.set_status("Streaming", "#6bff9b")
-            self.btn_rs_start.setEnabled(False)
-            self.btn_rs_stop.setEnabled(True)
+            # Only update panel status if the panel exists
+            if hasattr(self, 'realsense_panel') and self.realsense_panel:
+                self.realsense_panel.set_status("Streaming", "#6bff9b")
+            
+            if hasattr(self, 'btn_rs_start'):
+                self.btn_rs_start.setEnabled(False)
+            if hasattr(self, 'btn_rs_stop'):
+                self.btn_rs_stop.setEnabled(True)
+            
             logging.info(f"RealSense stream started @ {width}x{height} @ {fps} FPS")
 
         except Exception as e:
-            self.realsense_panel.set_status("Start failed", "#ff6b6b")
+            # Only update panel status if the panel exists
+            if hasattr(self, 'realsense_panel') and self.realsense_panel:
+                self.realsense_panel.set_status("Start failed", "#ff6b6b")
             logging.error(f"Failed to start stream: {e}")
 
     def stop_realsense(self):
@@ -591,9 +611,24 @@ class RobotGUI(QMainWindow):
         if self.pipeline:
             self.pipeline.stop()
             self.pipeline = None
-        self.realsense_panel.set_status("Stopped", "#ffaa6b")
-        self.btn_rs_start.setEnabled(True)
-        self.btn_rs_stop.setEnabled(False)
+        
+        # Only update panel status if the panel still exists
+        if hasattr(self, 'realsense_panel') and self.realsense_panel:
+            self.realsense_panel.set_status("Stopped", "#ffaa6b")
+        
+        if hasattr(self, 'btn_rs_start'):
+            self.btn_rs_start.setEnabled(True)
+        if hasattr(self, 'btn_rs_stop'):
+            self.btn_rs_stop.setEnabled(False)
+        
+        # Clear the camera displays
+        if hasattr(self, 'video_label_rgb'):
+            self.video_label_rgb.clear()
+            self.video_label_rgb.setText("RGB Stream")
+        if hasattr(self, 'video_label_depth'):
+            self.video_label_depth.clear()
+            self.video_label_depth.setText("Depth Stream")
+        
         logging.info("RealSense stream stopped")
 
     def update_frame(self):
